@@ -66,7 +66,7 @@ cat >>Cargo.toml <<EOF
 
 [[bin]]
 name = "$name"
-path = "$name/main.rs"
+path = "$name/src/main.rs"
 EOF
 
 echo "$(tput bold)Done!$(tput sgr0)"
