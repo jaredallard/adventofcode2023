@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, VecDeque};
 use std::fs;
 use std::io::{self, prelude::*};
 
@@ -29,13 +29,13 @@ fn main() {
         // partials stores characters that partially match a key in
         // words_to_numbers. This should be reset any time a valid word
         // or digit is found.
-        let mut partials: Vec<char> = Vec::new();
+        let mut partials: VecDeque<char> = VecDeque::new();
 
         for c in line.chars() {
             // digit, add it to the numbers vec.
             if c.is_digit(10) {
                 // reset the partial matcher.
-                partials = Vec::new();
+                partials.clear();
 
                 numbers.push(c.to_digit(10).unwrap() as i16);
                 continue;
@@ -47,7 +47,7 @@ fn main() {
             }
 
             // add the character to the partial match vec.
-            partials.push(c);
+            partials.push_back(c);
 
             // see if we have a direct match with word -> number.
             let word: String = partials.iter().collect();
@@ -83,7 +83,7 @@ fn main() {
 
                 // try again, but this time remove the first character
                 // from the partials vector.
-                partials.remove(0);
+                partials.pop_front();
             }
         }
 
