@@ -11,6 +11,8 @@ fn main() {
 
     let mut valid_game_num_sum = 0;
 
+    let mut p2 = 0;
+
     for l in reader.lines() {
         let line = l.expect("failed to read line");
 
@@ -28,6 +30,11 @@ fn main() {
         // rounds format: 3 blue, 4 red; 1 red, 2 green, 6 blue; 2 green
         println!("Game {}", game_num);
         let mut all_valid = true;
+
+        let mut largest_red = 0;
+        let mut largest_green = 0;
+        let mut largest_blue = 0;
+
         for (round_num, round) in rounds.split(";").enumerate() {
             let mut round_red = 0;
             let mut round_green = 0;
@@ -46,10 +53,22 @@ fn main() {
                 let color = spl.next().expect("failed to parse color");
 
                 if color == "red" {
+                    if amount > largest_red {
+                        largest_red = amount
+                    }
+
                     round_red += amount
                 } else if color == "green" {
+                    if amount > largest_green {
+                        largest_green = amount
+                    }
+
                     round_green += amount
                 } else if color == "blue" {
+                    if amount > largest_blue {
+                        largest_blue = amount
+                    }
+
                     round_blue += amount
                 } else {
                     panic!("unknown color {}", color)
@@ -67,14 +86,20 @@ fn main() {
             {
                 println!("Round {} invalid", round_num);
                 all_valid = false;
-                break;
             }
         }
         if all_valid {
             valid_game_num_sum += game_num;
         }
+        println!(
+            " = Max(R{}, G{}, B{})",
+            largest_red, largest_green, largest_blue
+        );
+
+        p2 += (largest_red * largest_green) * largest_blue
     }
 
     println!("");
-    println!("Problem 1: {}", valid_game_num_sum)
+    println!("Problem 1: {}", valid_game_num_sum);
+    println!("Problem 2: {}", p2);
 }
