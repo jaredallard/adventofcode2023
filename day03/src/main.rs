@@ -1,3 +1,4 @@
+use itertools::Itertools;
 use std::io::{self, prelude::*};
 use std::{fs, vec};
 
@@ -5,11 +6,13 @@ use std::{fs, vec};
 // Wrong: 493642
 // Wrong: 518514
 
-#[derive(Debug, Eq, Ord, PartialEq, PartialOrd)]
-struct Symbol {
-    // pos is a representation of the location of the symbol as it would
-    // appear on a 2d array ()
-    pos: Vec<usize>,
+// Wrong (p2): 52133154
+
+#[derive(Debug, Eq, PartialEq)]
+enum Entry {
+    Empty,
+    Symbol(char),
+    NumberPartial(usize),
 }
 
 // is_special_char returns true if the provided character is not a digit
@@ -31,23 +34,7 @@ fn has_special_char_edge(edges: Vec<Option<&char>>) -> bool {
     return false;
 }
 
-fn main() {
-    let f = fs::File::open("day03/input.txt").expect("failed to open file");
-    let reader = io::BufReader::new(f);
-
-    let mut graph: Vec<Vec<char>> = vec![];
-
-    for l in reader.lines() {
-        graph.push(
-            l.expect("failed to read line")
-                .chars()
-                .collect::<Vec<char>>(),
-        );
-    }
-
-    // Iterate over the graph, finding numbers that have an adjacent
-    // symbol next to them.
-
+fn part1(graph: Vec<Vec<char>>) -> usize {
     let mut sum = 0;
     for y in 0..graph.len() {
         let row = graph.get(y).expect("should succeed");
@@ -104,7 +91,7 @@ fn main() {
                 if !numbers.is_empty() && numbers_has_symbol {
                     let number = numbers.iter().fold(0, |acc, &num| acc * 10 + num);
 
-                    println!("Commit {:?} -> {} (S{})", numbers, number, sum);
+                    //println!("Commit {:?} -> {} (S{})", numbers, number, sum);
                     sum += number;
                 }
 
@@ -117,6 +104,115 @@ fn main() {
         }
     }
 
+    return sum;
+}
+
+fn part2(graph: Vec<Vec<Entry>>) -> usize {
+    let graph_range = 0..graph.len();
+    graph_range
+        .clone()
+        .cartesian_product(graph_range)
+        .filter(|(y, x)| matches!(graph[*y][*x], Entry::Symbol('*')))
+        .map(adjacent_part_nums(&graph))
+        .filter_map(|nums| {
+            if nums.len() == 2 {
+                Some(nums.iter().product::<usize>())
+            } else {
+                None
+            }
+        })
+        .sum()
+}
+
+// returns all part numbers
+// cleanup inspired by @zaquestion's day03 impl
+fn adjacent_part_nums(graph: &Vec<Vec<Entry>>) -> impl Fn((usize, usize)) -> Vec<usize> + '_ {
+    move |(y, x)| {
+        vec![
+            (y + 1, x),     // down
+            (y - 1, x),     // up
+            (y, x - 1),     // left
+            (y, x + 1),     // right
+            (y + 1, x + 1), // down right
+            (y - 1, x + 1), // up right
+            (y - 1, x - 1), // up left
+            (y + 1, x - 1), // down left
+        ]
+        .iter()
+        .filter(|(y, x)| {
+            // only return numbers
+            !(*y > graph.len() || *x > graph[*y].len())
+                && matches!(graph[*y][*x], Entry::NumberPartial(_))
+        })
+        .map(|(y, x)| {
+            // find the start of the number
+            let num_start_x = (1..=*x)
+                .rev()
+                .skip_while(|x| matches!(graph[*y][*x - 1], Entry::NumberPartial(_)))
+                .next()
+                .unwrap_or_default();
+
+            // find the end of the number
+            let num_end_x = (*x..graph[*y].len())
+                .skip_while(|x| matches!(graph[*y][*x], Entry::NumberPartial(_)))
+                .next()
+                .unwrap_or(graph[*y].len());
+
+            graph[*y]
+                .get(num_start_x..num_end_x)
+                .expect("graph to have contain x's discovered earlier")
+                .iter()
+                .map(|e| match e {
+                    Entry::NumberPartial(i) => *i,
+                    Entry::Symbol(_) => panic!("not number"),
+                    Entry::Empty => panic!("not number"),
+                })
+                .fold(0, |acc, num| acc * 10 + num)
+        })
+        .unique()
+        .collect::<Vec<_>>()
+    }
+}
+
+fn main() {
+    let f = fs::File::open("day03/input.txt").expect("failed to open file");
+    let reader = io::BufReader::new(f);
+
+    let mut graph: Vec<Vec<char>> = vec![];
+
+    // for part 2 I decided to mess w/ enums and have a "strongly typed"
+    // data-structure to work with.
+    let mut p2_graph: Vec<Vec<Entry>> = vec![];
+
+    for l in reader.lines().into_iter() {
+        let line = l.expect("read the lines");
+        let chars = line.chars();
+
+        let mut p1_vec: Vec<char> = vec![];
+        let mut p2_vec: Vec<Entry> = vec![];
+        for c in chars.into_iter() {
+            p1_vec.push(c);
+
+            match c {
+                c if is_special_char(&c) => p2_vec.push(Entry::Symbol(c)),
+                c if c == '.' => p2_vec.push(Entry::Empty),
+                c if c.is_digit(10) => {
+                    p2_vec.push(Entry::NumberPartial(c.to_digit(10).unwrap() as usize))
+                }
+                _ => panic!("wat"),
+            }
+        }
+
+        graph.push(p1_vec);
+        p2_graph.push(p2_vec);
+    }
+
+    // Iterate over the graph, finding numbers that have an adjacent
+    // symbol next to them.
+
     // Correct: 539433
-    println!("Problem 1: {}", sum)
+    println!("Problem 1: {}", part1(graph));
+
+    // Correct: 75847567
+    println!("Problem 2: {}", part2(p2_graph));
 }
